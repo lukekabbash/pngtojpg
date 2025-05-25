@@ -6,6 +6,9 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        'times': ['Times New Roman', 'Times', 'serif'],
+      },
       colors: {
         dark: {
           50: '#f8fafc',

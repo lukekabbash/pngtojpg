@@ -2,7 +2,20 @@
  * Image processing utilities for PNG to JPEG conversion
  */
 
-export const processImage = async (file, targetSizeKB = 500, cropParams = null) => {
+// Helper function to check if image has transparency
+const hasTransparency = (canvas, ctx) => {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < 255) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export const processImage = async (file, targetQuality = null, cropParams = null) => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
@@ -63,9 +76,8 @@ export const processImage = async (file, targetSizeKB = 500, cropParams = null) 
         sourceHeight = img.height;
       }
 
-      // Fill background with black (in case of letterboxing)
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, targetWidth, targetHeight);
+      // Clear canvas with transparent background first
+      ctx.clearRect(0, 0, targetWidth, targetHeight);
 
       // Draw the image
       if (cropParams) {
@@ -78,57 +90,159 @@ export const processImage = async (file, targetSizeKB = 500, cropParams = null) 
         ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
       }
 
+      // Check if the image has transparency
+      const imageHasTransparency = hasTransparency(canvas, ctx);
+      
+      // If image has transparency, use PNG format to preserve it
+      if (imageHasTransparency) {
+        canvas.toBlob((blob) => {
+          const result = {
+            blob,
+            url: URL.createObjectURL(blob),
+            size: blob.size,
+            sizeKB: Math.round(blob.size / 1024),
+            quality: 100, // PNG is lossless
+            dimensions: {
+              width: targetWidth,
+              height: targetHeight
+            },
+            aspectRatio: cropParams?.aspectRatio || '16:9',
+            format: 'PNG',
+            preservedTransparency: true
+          };
+          resolve(result);
+        }, 'image/png');
+        return;
+      }
+
+      // For non-transparent images, fill background with white for JPEG
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = targetWidth;
+      tempCanvas.height = targetHeight;
+      
+      // Fill with white background
+      tempCtx.fillStyle = '#FFFFFF';
+      tempCtx.fillRect(0, 0, targetWidth, targetHeight);
+      
+      // Draw the original image on top
+      tempCtx.drawImage(canvas, 0, 0);
+
       // Convert to JPEG with compression
       const compressImage = (quality) => {
         return new Promise((resolve) => {
-          canvas.toBlob((blob) => {
+          tempCanvas.toBlob((blob) => {
             resolve(blob);
-          }, 'image/jpeg', quality);
+          }, 'image/jpeg', quality / 100);
         });
       };
 
-      // Binary search for optimal quality to achieve target file size
-      const findOptimalQuality = async () => {
-        let minQuality = 0.1;
-        let maxQuality = 0.95;
+      // Get original file size for comparison
+      const originalSizeKB = file.size / 1024;
+      
+      // If a specific quality is requested, use it directly
+      if (targetQuality !== null) {
+        compressImage(targetQuality).then((blob) => {
+          const result = {
+            blob,
+            url: URL.createObjectURL(blob),
+            size: blob.size,
+            sizeKB: Math.round(blob.size / 1024),
+            quality: targetQuality,
+            dimensions: {
+              width: targetWidth,
+              height: targetHeight
+            },
+            aspectRatio: cropParams?.aspectRatio || '16:9',
+            format: 'JPEG',
+            preservedTransparency: false,
+            originalSizeKB: Math.round(originalSizeKB),
+            compressionRatio: Math.round((1 - blob.size / file.size) * 100)
+          };
+          resolve(result);
+        });
+        return;
+      }
+      
+      // Aggressive compression strategy - find the lowest quality that still looks decent
+      const findOptimalCompression = async () => {
+        // Start with different quality levels based on original file size
+        let startQuality = 85; // Start high for quality
+        let minQuality = 30;   // Don't go below 30% quality
+        let maxQuality = 95;   // Cap at 95% to ensure some compression
+        
+        // For very large files, be more aggressive
+        if (originalSizeKB > 2000) {
+          startQuality = 70;
+          minQuality = 20;
+        } else if (originalSizeKB > 1000) {
+          startQuality = 75;
+          minQuality = 25;
+        }
+
         let bestBlob = null;
-        let bestQuality = 0.8;
+        let bestQuality = startQuality;
+        let bestCompressionRatio = 0;
 
-        for (let i = 0; i < 10; i++) {
-          const currentQuality = (minQuality + maxQuality) / 2;
-          const blob = await compressImage(currentQuality);
+        // Test multiple quality levels to find the sweet spot
+        const qualityLevels = [
+          maxQuality,     // 95% - minimal compression
+          85,             // 85% - light compression
+          75,             // 75% - moderate compression
+          65,             // 65% - good compression
+          55,             // 55% - aggressive compression
+          45,             // 45% - very aggressive
+          35,             // 35% - maximum reasonable compression
+          minQuality      // minimum quality
+        ];
+
+        for (const quality of qualityLevels) {
+          const blob = await compressImage(quality);
           const sizeKB = blob.size / 1024;
-
-          if (Math.abs(sizeKB - targetSizeKB) < 50 || maxQuality - minQuality < 0.01) {
+          const compressionRatio = (originalSizeKB - sizeKB) / originalSizeKB;
+          
+          // Always prefer more compression, but ensure we don't make files bigger
+          if (sizeKB < originalSizeKB && compressionRatio > bestCompressionRatio) {
             bestBlob = blob;
-            bestQuality = currentQuality;
-            break;
+            bestQuality = quality;
+            bestCompressionRatio = compressionRatio;
           }
+        }
 
-          if (sizeKB > targetSizeKB) {
-            maxQuality = currentQuality;
-          } else {
-            minQuality = currentQuality;
-            bestBlob = blob;
-            bestQuality = currentQuality;
+        // If no compression worked (file got bigger), use highest quality
+        if (!bestBlob) {
+          bestBlob = await compressImage(maxQuality);
+          bestQuality = maxQuality;
+        }
+
+        // For very small files that might get bigger, try even higher quality
+        if (originalSizeKB < 100 && bestBlob.size > file.size) {
+          const highQualityBlob = await compressImage(98);
+          if (highQualityBlob.size <= file.size) {
+            bestBlob = highQualityBlob;
+            bestQuality = 98;
           }
         }
 
         return { blob: bestBlob, quality: bestQuality };
       };
 
-      findOptimalQuality().then(({ blob, quality }) => {
+      findOptimalCompression().then(({ blob, quality }) => {
         const result = {
           blob,
           url: URL.createObjectURL(blob),
           size: blob.size,
           sizeKB: Math.round(blob.size / 1024),
-          quality: Math.round(quality * 100),
+          quality: Math.round(quality),
           dimensions: {
             width: targetWidth,
             height: targetHeight
           },
-          aspectRatio: cropParams?.aspectRatio || '16:9'
+          aspectRatio: cropParams?.aspectRatio || '16:9',
+          format: 'JPEG',
+          preservedTransparency: false,
+          originalSizeKB: Math.round(originalSizeKB),
+          compressionRatio: Math.round((1 - blob.size / file.size) * 100)
         };
         resolve(result);
       });
@@ -165,11 +279,16 @@ export const getImageInfo = (file) => {
   });
 };
 
-export const downloadImage = (blob, filename = 'converted-image.jpg') => {
+export const downloadImage = (blob, filename = 'converted-image', format = 'JPEG') => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  
+  // Use appropriate file extension based on format
+  const extension = format === 'PNG' ? '.png' : '.jpg';
+  const finalFilename = filename.includes('.') ? filename : filename + extension;
+  
+  a.download = finalFilename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

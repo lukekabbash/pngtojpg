@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useTheme } from '../App';
 
 // Throttle function for performance optimization
 const throttle = (func, delay) => {
@@ -30,6 +31,7 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const animationFrameRef = useRef(null);
+  const { isDarkMode } = useTheme();
 
   const aspectRatios = useMemo(() => ({
     '16:9': { ratio: 16/9, label: '16:9 (Landscape)', dimensions: '1920×1080' },
@@ -275,28 +277,40 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
       className="w-full max-w-5xl mx-auto"
       ref={containerRef}
     >
-      <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
-        <h3 className="text-2xl font-bold text-white mb-4 text-center">
+      <div className={`p-6 border-2 transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-gray-400'
+      }`}>
+        <h3 className={`text-3xl font-black mb-4 text-center font-times uppercase tracking-wider ${
+          isDarkMode ? 'text-white' : 'text-black'
+        }`}>
           Choose Crop Area
         </h3>
         
-        <p className="text-gray-400 text-center mb-6">
+        <p className={`text-center mb-6 font-times font-semibold text-lg ${
+          isDarkMode ? 'text-gray-300' : 'text-gray-700'
+        }`}>
           Select aspect ratio and position the crop area over the most important part of your image.
         </p>
 
         {/* Aspect Ratio Selector */}
         <div className="flex justify-center mb-6">
-          <div className="bg-dark-700 rounded-lg p-1 flex gap-1">
+          <div className={`p-1 flex gap-1 border-2 ${
+            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-200 border-gray-400'
+          }`}>
             {Object.entries(aspectRatios).map(([key, { label, dimensions }]) => (
               <motion.button
                 key={key}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleAspectRatioChange(key)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                className={`px-4 py-2 text-sm font-bold transition-all duration-200 font-times uppercase tracking-wide ${
                   aspectRatio === key
-                    ? 'bg-blue-500 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-dark-600'
+                    ? 'bg-red-800 text-white shadow-lg border-2 border-red-900'
+                    : isDarkMode 
+                      ? 'text-gray-300 hover:text-white hover:bg-gray-600 border-2 border-transparent' 
+                      : 'text-gray-700 hover:text-black hover:bg-gray-300 border-2 border-transparent'
                 }`}
               >
                 <div className="text-center">
@@ -310,13 +324,19 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
 
         {/* Zoom Controls */}
         <div className="flex justify-center items-center gap-4 mb-6">
-          <span className="text-gray-400 text-sm">Zoom:</span>
+          <span className={`text-sm font-times font-bold uppercase tracking-wide ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+          }`}>Zoom:</span>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => handleZoomButton(-0.2)}
             disabled={zoomLevel <= 1}
-            className="w-8 h-8 rounded-full bg-dark-600 hover:bg-dark-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white"
+            className={`w-8 h-8 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-times font-bold border-2 ${
+              isDarkMode 
+                ? 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600' 
+                : 'bg-gray-200 hover:bg-gray-300 text-black border-gray-400'
+            }`}
           >
             −
           </motion.button>
@@ -329,9 +349,13 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
               step="0.1"
               value={zoomLevel}
               onChange={handleZoomChange}
-              className="w-24 h-2 bg-dark-600 rounded-lg appearance-none cursor-pointer slider"
+              className={`w-24 h-2 appearance-none cursor-pointer slider ${
+                isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
+              }`}
             />
-            <span className="text-white text-sm min-w-[3rem]">{zoomLevel.toFixed(1)}×</span>
+            <span className={`text-sm min-w-[3rem] font-times font-bold ${
+              isDarkMode ? 'text-white' : 'text-black'
+            }`}>{zoomLevel.toFixed(1)}×</span>
           </div>
           
           <motion.button
@@ -339,7 +363,11 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
             whileTap={{ scale: 0.9 }}
             onClick={() => handleZoomButton(0.2)}
             disabled={zoomLevel >= 3}
-            className="w-8 h-8 rounded-full bg-dark-600 hover:bg-dark-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white"
+            className={`w-8 h-8 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-times font-bold border-2 ${
+              isDarkMode 
+                ? 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600' 
+                : 'bg-gray-200 hover:bg-gray-300 text-black border-gray-400'
+            }`}
           >
             +
           </motion.button>
@@ -347,7 +375,7 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
 
         <div className="flex justify-center mb-6">
           <div 
-            className="relative inline-block cursor-crosshair select-none"
+            className="relative inline-block cursor-crosshair select-none border-2 border-gray-600"
             style={{ 
               width: previewDimensions.width, 
               height: previewDimensions.height 
@@ -357,7 +385,7 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
               ref={imageRef}
               src={URL.createObjectURL(originalInfo.file)}
               alt="Crop preview"
-              className="w-full h-full object-contain rounded-lg"
+              className="w-full h-full object-contain"
               draggable={false}
               onMouseDown={handleMouseDown}
               onWheel={handleWheel}
@@ -368,13 +396,13 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
             <div className="absolute inset-0 pointer-events-none">
               {/* Top overlay */}
               <div 
-                className="absolute top-0 left-0 right-0 bg-black bg-opacity-50"
+                className="absolute top-0 left-0 right-0 bg-black bg-opacity-60"
                 style={{ height: previewCropY }}
               />
               
               {/* Bottom overlay */}
               <div 
-                className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50"
+                className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60"
                 style={{ 
                   height: previewDimensions.height - previewCropY - previewCropHeight 
                 }}
@@ -382,7 +410,7 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
               
               {/* Left overlay */}
               <div 
-                className="absolute left-0 bg-black bg-opacity-50"
+                className="absolute left-0 bg-black bg-opacity-60"
                 style={{ 
                   top: previewCropY,
                   width: previewCropX,
@@ -392,7 +420,7 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
               
               {/* Right overlay */}
               <div 
-                className="absolute right-0 bg-black bg-opacity-50"
+                className="absolute right-0 bg-black bg-opacity-60"
                 style={{ 
                   top: previewCropY,
                   width: previewDimensions.width - previewCropX - previewCropWidth,
@@ -403,7 +431,7 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
 
             {/* Crop area border */}
             <div 
-              className="absolute border-2 border-blue-400 pointer-events-none"
+              className="absolute border-4 border-red-800 pointer-events-none"
               style={{
                 left: previewCropX,
                 top: previewCropY,
@@ -412,32 +440,34 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
                 willChange: 'transform' // Optimize for animations
               }}
             >
-              <div className="absolute inset-0 bg-blue-400 bg-opacity-10" />
+              <div className="absolute inset-0 bg-red-800 bg-opacity-10" />
               
               {/* Corner indicators */}
-              <div className="absolute -top-1 -left-1 w-3 h-3 bg-blue-400 rounded-full" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 rounded-full" />
-              <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-400 rounded-full" />
-              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-400 rounded-full" />
+              <div className="absolute -top-1 -left-1 w-4 h-4 bg-red-800 border border-white" />
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-800 border border-white" />
+              <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-red-800 border border-white" />
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-800 border border-white" />
             </div>
 
             {/* Center crosshair */}
             <div 
-              className="absolute w-4 h-4 pointer-events-none"
+              className="absolute w-6 h-6 pointer-events-none"
               style={{
-                left: cropPosition.x * previewDimensions.width - 8,
-                top: cropPosition.y * previewDimensions.height - 8,
+                left: cropPosition.x * previewDimensions.width - 12,
+                top: cropPosition.y * previewDimensions.height - 12,
                 willChange: 'transform' // Optimize for animations
               }}
             >
-              <div className="w-full h-0.5 bg-blue-400 absolute top-1/2 transform -translate-y-1/2" />
-              <div className="h-full w-0.5 bg-blue-400 absolute left-1/2 transform -translate-x-1/2" />
+              <div className="w-full h-1 bg-red-800 absolute top-1/2 transform -translate-y-1/2 border border-white" />
+              <div className="h-full w-1 bg-red-800 absolute left-1/2 transform -translate-x-1/2 border border-white" />
             </div>
           </div>
         </div>
 
-        <div className="text-center text-sm text-gray-400 mb-6">
-          <p>💡 Click and drag to reposition • Scroll to zoom • The blue rectangle shows your final crop</p>
+        <div className={`text-center text-sm mb-6 font-times font-bold uppercase tracking-wide ${
+          isDarkMode ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          <p>💡 Click and drag to reposition • Scroll to zoom • The red rectangle shows your final crop</p>
           <p>Output will be {aspectRatios[aspectRatio].dimensions} pixels</p>
         </div>
 
@@ -446,7 +476,11 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onSkip}
-            className="bg-dark-700 hover:bg-dark-600 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 border border-dark-600"
+            className={`font-bold py-4 px-8 transition-all duration-200 border-2 font-times uppercase tracking-wider ${
+              isDarkMode 
+                ? 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600' 
+                : 'bg-white hover:bg-gray-100 text-black border-gray-400'
+            }`}
           >
             Use Center Crop
           </motion.button>
@@ -455,7 +489,7 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleConfirmCrop}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg"
+            className="bg-red-800 hover:bg-red-900 text-white font-bold py-4 px-8 transition-all duration-200 shadow-lg font-times uppercase tracking-wider border-2 border-red-800 hover:border-red-900"
           >
             Confirm Crop
           </motion.button>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
 import FileUpload from './components/FileUpload';
@@ -6,6 +6,31 @@ import CropSelector from './components/CropSelector';
 import ImagePreview from './components/ImagePreview';
 import { processImage, getImageInfo } from './utils/imageProcessor';
 import './index.css';
+
+// Theme Context
+const ThemeContext = createContext();
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
+
+const ThemeProvider = ({ children }) => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
 
 function App() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -79,6 +104,10 @@ function App() {
     setIsProcessing(false);
   };
 
+  const handleReprocess = (newResult) => {
+    setProcessedResult(newResult);
+  };
+
   const getCurrentStep = () => {
     if (!selectedFile) return 'upload';
     if (showCropSelector) return 'crop';
@@ -86,12 +115,48 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-950 text-white">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 opacity-5">
+    <ThemeProvider>
+      <AppContent 
+        selectedFile={selectedFile}
+        originalInfo={originalInfo}
+        showCropSelector={showCropSelector}
+        processedResult={processedResult}
+        isProcessing={isProcessing}
+        error={error}
+        handleFileSelect={handleFileSelect}
+        handleCropSelect={handleCropSelect}
+        handleSkipCrop={handleSkipCrop}
+        handleReset={handleReset}
+        handleReprocess={handleReprocess}
+        getCurrentStep={getCurrentStep}
+      />
+    </ThemeProvider>
+  );
+}
+
+const AppContent = ({ 
+  selectedFile, originalInfo, showCropSelector, processedResult, 
+  isProcessing, error, handleFileSelect, handleCropSelect, 
+  handleSkipCrop, handleReset, handleReprocess, getCurrentStep 
+}) => {
+  const { isDarkMode } = useTheme();
+
+  return (
+    <div className={`min-h-screen font-times transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-gray-800 text-white' 
+        : 'bg-gray-100 text-black'
+    }`}>
+      {/* News-style background pattern */}
+      <div className="fixed inset-0 opacity-10">
         <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 25% 25%, #3b82f6 0%, transparent 50%),
-                           radial-gradient(circle at 75% 75%, #8b5cf6 0%, transparent 50%)`
+          backgroundImage: `repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 30px,
+            ${isDarkMode ? '#1f2937' : '#e5e7eb'} 30px,
+            ${isDarkMode ? '#1f2937' : '#e5e7eb'} 31px
+          )`
         }} />
       </div>
 
@@ -106,13 +171,17 @@ function App() {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="bg-red-900/50 border border-red-700 text-red-200 px-6 py-4 rounded-lg mb-8 max-w-2xl mx-auto"
+                  className={`border-2 px-6 py-4 mb-8 max-w-2xl mx-auto ${
+                    isDarkMode 
+                      ? 'bg-red-950/30 text-red-200 border-red-800' 
+                      : 'bg-red-100 text-red-900 border-red-700'
+                  }`}
                 >
                   <div className="flex items-center">
-                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 mr-2 text-red-700" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
-                    <span>{error}</span>
+                    <span className="font-times font-bold">{error}</span>
                   </div>
                 </motion.div>
               )}
@@ -160,6 +229,7 @@ function App() {
                     originalInfo={originalInfo}
                     processedResult={processedResult}
                     onReset={handleReset}
+                    onReprocess={handleReprocess}
                   />
                 </motion.div>
               )}
@@ -174,48 +244,71 @@ function App() {
               transition={{ duration: 0.8, delay: 1 }}
               className="mt-20 max-w-4xl mx-auto"
             >
-              <h3 className="text-2xl font-bold text-center text-white mb-12">
+              <h3 className={`text-3xl font-bold text-center mb-12 font-times uppercase tracking-wider ${
+                isDarkMode ? 'text-white' : 'text-black'
+              }`}>
                 Why Choose Our Converter?
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="bg-dark-800 p-6 rounded-xl border border-dark-700 text-center"
+                  className={`p-6 border-2 text-center transition-colors duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border-gray-700' 
+                      : 'bg-white border-gray-400'
+                  }`}
                 >
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-red-800/30 border border-red-800 flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-red-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
-                  <h4 className="text-lg font-semibold text-white mb-2">Lightning Fast</h4>
-                  <p className="text-gray-400">Process images instantly with our optimized algorithms</p>
+                  <h4 className={`text-lg font-bold mb-2 font-times uppercase tracking-wide ${
+                    isDarkMode ? 'text-white' : 'text-black'
+                  }`}>Lightning Fast</h4>
+                  <p className={`font-times ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>Process images instantly with our optimized algorithms</p>
                 </motion.div>
 
                 <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="bg-dark-800 p-6 rounded-xl border border-dark-700 text-center"
+                  className={`p-6 border-2 text-center transition-colors duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border-gray-700' 
+                      : 'bg-white border-gray-400'
+                  }`}
                 >
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-red-800/30 border border-red-800 flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-red-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h4 className="text-lg font-semibold text-white mb-2">Smart Cropping</h4>
-                  <p className="text-gray-400">Choose exactly which part of your image to keep</p>
+                  <h4 className={`text-lg font-bold mb-2 font-times uppercase tracking-wide ${
+                    isDarkMode ? 'text-white' : 'text-black'
+                  }`}>Smart Cropping</h4>
+                  <p className={`font-times ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>Choose exactly which part of your image to keep</p>
                 </motion.div>
 
                 <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="bg-dark-800 p-6 rounded-xl border border-dark-700 text-center"
+                  className={`p-6 border-2 text-center transition-colors duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border-gray-700' 
+                      : 'bg-white border-gray-400'
+                  }`}
                 >
-                  <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-red-800/30 border border-red-800 flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-red-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
-                  <h4 className="text-lg font-semibold text-white mb-2">100% Private</h4>
-                  <p className="text-gray-400">All processing happens locally in your browser</p>
+                  <h4 className={`text-lg font-bold mb-2 font-times uppercase tracking-wide ${
+                    isDarkMode ? 'text-white' : 'text-black'
+                  }`}>100% Private</h4>
+                  <p className={`font-times ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>All processing happens locally in your browser</p>
                 </motion.div>
               </div>
             </motion.section>
@@ -226,14 +319,29 @@ function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.2 }}
-            className="mt-20 text-center text-gray-500 pb-8"
+            className="mt-20 text-center pb-8"
           >
-            <p>© 2025 <a href="https://lukekabbash.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors duration-200">Luke Kabbash</a></p>
+            <div className={`border-t-2 pt-8 ${
+              isDarkMode ? 'border-gray-700' : 'border-gray-400'
+            }`}>
+              <p className={`font-times font-bold uppercase tracking-wider ${
+                isDarkMode ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                © 2025 <a 
+                  href="https://lukekabbash.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-red-800 hover:text-red-900 transition-colors duration-200 font-times"
+                >
+                  Luke Kabbash
+                </a>
+              </p>
+            </div>
           </motion.footer>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default App; 

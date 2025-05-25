@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useTheme } from '../App';
 
 const FileUpload = ({ onFileSelect, isProcessing }) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  const { isDarkMode } = useTheme();
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -40,72 +42,88 @@ const FileUpload = ({ onFileSelect, isProcessing }) => {
       transition={{ duration: 0.5 }}
       className="w-full max-w-2xl mx-auto"
     >
-      <div className="gradient-border">
+      <motion.div
+        className={`border-4 border-dashed p-8 text-center transition-all duration-300 ${
+          isDragOver 
+            ? 'border-red-800 bg-red-100 dark:bg-red-950/30' 
+            : isDarkMode 
+              ? 'border-gray-700 bg-gray-800 hover:border-red-800' 
+              : 'border-gray-400 bg-white hover:border-red-800'
+        }`}
+        animate={{
+          scale: isDragOver ? 1.02 : 1,
+        }}
+        transition={{ duration: 0.2 }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <motion.div
-          className="gradient-border-inner p-8 text-center"
           animate={{
-            scale: isDragOver ? 1.02 : 1,
+            scale: isDragOver ? 1.1 : 1,
+            rotate: isDragOver ? 5 : 0,
           }}
           transition={{ duration: 0.2 }}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          className="mb-6"
         >
-          <motion.div
-            animate={{
-              scale: isDragOver ? 1.1 : 1,
-              rotate: isDragOver ? 5 : 0,
-            }}
-            transition={{ duration: 0.2 }}
-            className="mb-6"
+          <svg
+            className={`w-20 h-20 mx-auto ${
+              isDragOver ? 'text-red-800' : 'text-red-800'
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="w-16 h-16 mx-auto text-blue-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
-          </motion.div>
-
-          <h3 className="text-2xl font-bold text-white mb-4">
-            {isDragOver ? 'Drop your PNG here!' : 'Upload PNG Image'}
-          </h3>
-          
-          <p className="text-gray-400 mb-6">
-            Drag and drop your PNG file here, or click to browse
-          </p>
-
-          <motion.label
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-block"
-          >
-            <input
-              type="file"
-              accept="image/png"
-              onChange={handleFileInput}
-              className="hidden"
-              disabled={isProcessing}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
             />
-            <span className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-8 rounded-lg cursor-pointer transition-all duration-200 shadow-lg">
-              {isProcessing ? 'Processing...' : 'Choose File'}
-            </span>
-          </motion.label>
-
-          <div className="mt-6 text-sm text-gray-500">
-            <p>• Supports PNG files only</p>
-            <p>• Output: 1920x1080 JPG (~500KB)</p>
-            <p>• Maintains aspect ratio with letterboxing</p>
-          </div>
+          </svg>
         </motion.div>
-      </div>
+
+        <h3 className={`text-3xl font-black mb-4 font-times uppercase tracking-wider ${
+          isDarkMode ? 'text-white' : 'text-black'
+        }`}>
+          {isDragOver ? 'Drop PNG Here!' : 'Upload PNG Image'}
+        </h3>
+        
+        <p className={`mb-8 font-times font-semibold text-lg ${
+          isDarkMode ? 'text-gray-300' : 'text-gray-700'
+        }`}>
+          Drag and drop your PNG file here, or click to browse
+        </p>
+
+        <motion.label
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="inline-block"
+        >
+          <input
+            type="file"
+            accept="image/png"
+            onChange={handleFileInput}
+            className="hidden"
+            disabled={isProcessing}
+          />
+          <span className={`inline-block font-bold py-4 px-10 cursor-pointer transition-all duration-200 shadow-lg font-times uppercase tracking-wider border-2 ${
+            isProcessing 
+              ? 'bg-gray-500 text-gray-300 cursor-not-allowed border-gray-500' 
+              : 'bg-red-800 hover:bg-red-900 text-white border-red-800 hover:border-red-900'
+          }`}>
+            {isProcessing ? 'Processing...' : 'Choose File'}
+          </span>
+        </motion.label>
+
+        <div className={`mt-8 text-sm font-times font-semibold uppercase tracking-wide ${
+          isDarkMode ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          <p>• Supports PNG files only</p>
+          <p>• Output: 1920x1080 JPG (~500KB)</p>
+          <p>• Maintains aspect ratio with letterboxing</p>
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
