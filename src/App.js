@@ -83,8 +83,18 @@ function App() {
     try {
       setIsProcessing(true);
       
-      // Process the image with crop parameters
-      const result = await processImage(file, 500, cropParameters);
+      // Determine output format based on input file type
+      let outputFormat = 'JPEG'; // Default for PNG and JPEG inputs
+      let targetQuality = null;  // Let the processor find optimal quality
+      
+      // For WebP files, preserve format and don't compress
+      if (file.type === 'image/webp') {
+        outputFormat = 'WEBP';
+        targetQuality = 100; // Maximum quality to preserve original quality without compression
+      }
+      
+      // Process the image with appropriate format and quality settings
+      const result = await processImage(file, targetQuality, cropParameters, outputFormat);
       setProcessedResult(result);
     } catch (err) {
       setError(err.message);
@@ -123,6 +133,7 @@ function App() {
         processedResult={processedResult}
         isProcessing={isProcessing}
         error={error}
+        cropParams={cropParams}
         handleFileSelect={handleFileSelect}
         handleCropSelect={handleCropSelect}
         handleSkipCrop={handleSkipCrop}
@@ -136,7 +147,7 @@ function App() {
 
 const AppContent = ({ 
   selectedFile, originalInfo, showCropSelector, processedResult, 
-  isProcessing, error, handleFileSelect, handleCropSelect, 
+  isProcessing, error, cropParams, handleFileSelect, handleCropSelect, 
   handleSkipCrop, handleReset, handleReprocess, getCurrentStep 
 }) => {
   const { isDarkMode } = useTheme();
@@ -230,6 +241,7 @@ const AppContent = ({
                     processedResult={processedResult}
                     onReset={handleReset}
                     onReprocess={handleReprocess}
+                    cropParams={cropParams}
                   />
                 </motion.div>
               )}

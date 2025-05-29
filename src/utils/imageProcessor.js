@@ -15,7 +15,7 @@ const hasTransparency = (canvas, ctx) => {
   return false;
 };
 
-export const processImage = async (file, targetQuality = null, cropParams = null) => {
+export const processImage = async (file, targetQuality = null, cropParams = null, outputFormat = 'JPEG') => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
@@ -35,14 +35,11 @@ export const processImage = async (file, targetQuality = null, cropParams = null
       canvas.height = targetHeight;
 
       // Calculate scaling and positioning
-      const imgAspectRatio = img.width / img.height;
-      const targetAspectRatio = targetWidth / targetHeight;
-
       let sourceX, sourceY, sourceWidth, sourceHeight;
       let drawWidth, drawHeight, offsetX, offsetY;
 
       if (cropParams) {
-        // Use custom crop parameters
+        // Use custom crop parameters - these are already in pixel coordinates
         sourceX = cropParams.x * img.width;
         sourceY = cropParams.y * img.height;
         sourceWidth = cropParams.width * img.width;
@@ -55,85 +52,117 @@ export const processImage = async (file, targetQuality = null, cropParams = null
         offsetY = 0;
       } else {
         // Use the original center-crop logic for 16:9
+        const imgAspectRatio = img.width / img.height;
+        const targetAspectRatio = targetWidth / targetHeight;
+        
         if (imgAspectRatio > targetAspectRatio) {
-          // Image is wider than target ratio
-          drawHeight = targetHeight;
-          drawWidth = drawHeight * imgAspectRatio;
-          offsetX = (targetWidth - drawWidth) / 2;
-          offsetY = 0;
+          // Image is wider than target ratio - crop from sides
+          sourceHeight = img.height;
+          sourceWidth = sourceHeight * targetAspectRatio;
+          sourceX = (img.width - sourceWidth) / 2;
+          sourceY = 0;
         } else {
-          // Image is taller than target ratio
-          drawWidth = targetWidth;
-          drawHeight = drawWidth / imgAspectRatio;
-          offsetX = 0;
-          offsetY = (targetHeight - drawHeight) / 2;
+          // Image is taller than target ratio - crop from top/bottom
+          sourceWidth = img.width;
+          sourceHeight = sourceWidth / targetAspectRatio;
+          sourceX = 0;
+          sourceY = (img.height - sourceHeight) / 2;
         }
-
-        // Use entire source image
-        sourceX = 0;
-        sourceY = 0;
-        sourceWidth = img.width;
-        sourceHeight = img.height;
+        
+        drawWidth = targetWidth;
+        drawHeight = targetHeight;
+        offsetX = 0;
+        offsetY = 0;
       }
 
       // Clear canvas with transparent background first
       ctx.clearRect(0, 0, targetWidth, targetHeight);
 
-      // Draw the image
-      if (cropParams) {
-        ctx.drawImage(
-          img,
-          sourceX, sourceY, sourceWidth, sourceHeight,
-          offsetX, offsetY, drawWidth, drawHeight
-        );
-      } else {
-        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-      }
+      // Draw the image with correct crop parameters
+      ctx.drawImage(
+        img,
+        sourceX, sourceY, sourceWidth, sourceHeight,
+        offsetX, offsetY, drawWidth, drawHeight
+      );
 
-      // Check if the image has transparency
+      // Check if the image has transparency (only relevant for PNG/WEBP)
       const imageHasTransparency = hasTransparency(canvas, ctx);
       
-      // If image has transparency, use PNG format to preserve it
-      if (imageHasTransparency) {
+      // Determine output format
+      let mimeType, fileExtension, isLossless;
+      switch (outputFormat.toUpperCase()) {
+        case 'PNG':
+          mimeType = 'image/png';
+          fileExtension = '.png';
+          isLossless = true;
+          break;
+        case 'WEBP':
+          mimeType = 'image/webp';
+          fileExtension = '.webp';
+          isLossless = false;
+          break;
+        default: // JPEG
+          mimeType = 'image/jpeg';
+          fileExtension = '.jpg';
+          isLossless = false;
+          outputFormat = 'JPEG';
+      }
+      
+      // If image has transparency and format doesn't support it, force PNG
+      if (imageHasTransparency && !['PNG', 'WEBP'].includes(outputFormat.toUpperCase())) {
+        mimeType = 'image/png';
+        fileExtension = '.png';
+        outputFormat = 'PNG';
+        isLossless = true;
+      }
+
+      // For lossless formats, use directly
+      if (isLossless || (outputFormat.toUpperCase() === 'PNG')) {
         canvas.toBlob((blob) => {
           const result = {
             blob,
             url: URL.createObjectURL(blob),
             size: blob.size,
             sizeKB: Math.round(blob.size / 1024),
-            quality: 100, // PNG is lossless
+            quality: 100, // Lossless
             dimensions: {
               width: targetWidth,
               height: targetHeight
             },
             aspectRatio: cropParams?.aspectRatio || '16:9',
-            format: 'PNG',
-            preservedTransparency: true
+            format: outputFormat,
+            preservedTransparency: imageHasTransparency
           };
           resolve(result);
-        }, 'image/png');
+        }, mimeType);
         return;
       }
 
-      // For non-transparent images, fill background with white for JPEG
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCanvas.width = targetWidth;
-      tempCanvas.height = targetHeight;
+      // For lossy formats (JPEG/WEBP), handle compression
+      let tempCanvas = canvas;
+      let tempCtx = ctx;
       
-      // Fill with white background
-      tempCtx.fillStyle = '#FFFFFF';
-      tempCtx.fillRect(0, 0, targetWidth, targetHeight);
-      
-      // Draw the original image on top
-      tempCtx.drawImage(canvas, 0, 0);
+      // For JPEG, fill background with white (WEBP supports transparency)
+      if (outputFormat.toUpperCase() === 'JPEG') {
+        tempCanvas = document.createElement('canvas');
+        tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = targetWidth;
+        tempCanvas.height = targetHeight;
+        
+        // Fill with white background
+        tempCtx.fillStyle = '#FFFFFF';
+        tempCtx.fillRect(0, 0, targetWidth, targetHeight);
+        
+        // Draw the original image on top
+        tempCtx.drawImage(canvas, 0, 0);
+      }
 
-      // Convert to JPEG with compression
+      // Convert with compression
       const compressImage = (quality) => {
         return new Promise((resolve) => {
           tempCanvas.toBlob((blob) => {
             resolve(blob);
-          }, 'image/jpeg', quality / 100);
+          }, mimeType, quality / 100);
         });
       };
 
@@ -154,8 +183,8 @@ export const processImage = async (file, targetQuality = null, cropParams = null
               height: targetHeight
             },
             aspectRatio: cropParams?.aspectRatio || '16:9',
-            format: 'JPEG',
-            preservedTransparency: false,
+            format: outputFormat,
+            preservedTransparency: outputFormat.toUpperCase() === 'WEBP' ? imageHasTransparency : false,
             originalSizeKB: Math.round(originalSizeKB),
             compressionRatio: Math.round((1 - blob.size / file.size) * 100)
           };
@@ -239,7 +268,7 @@ export const processImage = async (file, targetQuality = null, cropParams = null
             height: targetHeight
           },
           aspectRatio: cropParams?.aspectRatio || '16:9',
-          format: 'JPEG',
+          format: outputFormat,
           preservedTransparency: false,
           originalSizeKB: Math.round(originalSizeKB),
           compressionRatio: Math.round((1 - blob.size / file.size) * 100)
@@ -285,7 +314,18 @@ export const downloadImage = (blob, filename = 'converted-image', format = 'JPEG
   a.href = url;
   
   // Use appropriate file extension based on format
-  const extension = format === 'PNG' ? '.png' : '.jpg';
+  let extension;
+  switch (format.toUpperCase()) {
+    case 'PNG':
+      extension = '.png';
+      break;
+    case 'WEBP':
+      extension = '.webp';
+      break;
+    default: // JPEG
+      extension = '.jpg';
+  }
+  
   const finalFilename = filename.includes('.') ? filename : filename + extension;
   
   a.download = finalFilename;

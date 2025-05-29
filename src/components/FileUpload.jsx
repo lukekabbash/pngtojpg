@@ -21,16 +21,26 @@ const FileUpload = ({ onFileSelect, isProcessing }) => {
     setIsDragOver(false);
     
     const files = Array.from(e.dataTransfer.files);
-    const pngFiles = files.filter(file => file.type === 'image/png');
+    const supportedFiles = files.filter(file => 
+      file.type === 'image/png' || 
+      file.type === 'image/jpeg' || 
+      file.type === 'image/jpg' || 
+      file.type === 'image/webp'
+    );
     
-    if (pngFiles.length > 0) {
-      onFileSelect(pngFiles[0]);
+    if (supportedFiles.length > 0) {
+      onFileSelect(supportedFiles[0]);
     }
   }, [onFileSelect]);
 
   const handleFileInput = useCallback((e) => {
     const file = e.target.files[0];
-    if (file && file.type === 'image/png') {
+    if (file && (
+      file.type === 'image/png' || 
+      file.type === 'image/jpeg' || 
+      file.type === 'image/jpg' || 
+      file.type === 'image/webp'
+    )) {
       onFileSelect(file);
     }
   }, [onFileSelect]);
@@ -86,13 +96,13 @@ const FileUpload = ({ onFileSelect, isProcessing }) => {
         <h3 className={`text-3xl font-black mb-4 font-times uppercase tracking-wider ${
           isDarkMode ? 'text-white' : 'text-black'
         }`}>
-          {isDragOver ? 'Drop PNG Here!' : 'Upload PNG Image'}
+          {isDragOver ? 'Drop Image Here!' : 'Upload Image'}
         </h3>
         
         <p className={`mb-8 font-times font-semibold text-lg ${
           isDarkMode ? 'text-gray-300' : 'text-gray-700'
         }`}>
-          Drag and drop your PNG file here, or click to browse
+          Drag and drop your image file here, or click to browse
         </p>
 
         <motion.label
@@ -102,7 +112,7 @@ const FileUpload = ({ onFileSelect, isProcessing }) => {
         >
           <input
             type="file"
-            accept="image/png"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
             onChange={handleFileInput}
             className="hidden"
             disabled={isProcessing}
@@ -119,9 +129,10 @@ const FileUpload = ({ onFileSelect, isProcessing }) => {
         <div className={`mt-8 text-sm font-times font-semibold uppercase tracking-wide ${
           isDarkMode ? 'text-gray-400' : 'text-gray-600'
         }`}>
-          <p>• Supports PNG files only</p>
-          <p>• Output: 1920x1080 JPG (~500KB)</p>
-          <p>• Maintains aspect ratio with letterboxing</p>
+          <p>• Supports PNG, JPEG, and WebP files</p>
+          <p>• PNG/JPEG: Convert to optimized JPG</p>
+          <p>• WebP: Crop only (no compression)</p>
+          <p>• Smart cropping with aspect ratio options</p>
         </div>
       </motion.div>
     </motion.div>

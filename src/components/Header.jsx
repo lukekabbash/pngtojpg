@@ -69,7 +69,7 @@ const Header = () => {
           className="text-6xl md:text-7xl font-black mb-4 font-times uppercase tracking-wider"
         >
           <span className={`${isDarkMode ? 'text-white' : 'text-black'}`}>
-            PNG to JPG
+            Image Processor
           </span>
         </motion.h1>
         
@@ -84,7 +84,7 @@ const Header = () => {
           <h2 className={`text-2xl md:text-3xl font-bold font-times uppercase tracking-widest ${
             isDarkMode ? 'text-red-700' : 'text-red-800'
           }`}>
-            Image Converter
+            Multi-Format Converter
           </h2>
         </motion.div>
         
@@ -96,8 +96,8 @@ const Header = () => {
             isDarkMode ? 'text-gray-300' : 'text-gray-700'
           }`}
         >
-          Transform your high-resolution PNG images into optimized 1920×1080 JPG files 
-          with aggressive compression that maximizes file size reduction while preserving quality.
+          Process PNG, JPEG, and WebP images with smart compression and cropping. 
+          Convert PNG/JPEG to optimized JPG, or crop WebP files without quality loss.
         </motion.p>
       </div>
     </motion.header>

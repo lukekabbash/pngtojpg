@@ -254,12 +254,6 @@ const CropSelector = ({ originalInfo, onCropSelect, onSkip }) => {
     };
   }, []);
 
-  if (!needsCropping && zoomLevel === 1) {
-    // Image already matches aspect ratio and no zoom, skip crop selection
-    onSkip();
-    return null;
-  }
-
   if (!cropPositionData) return null;
 
   const {
